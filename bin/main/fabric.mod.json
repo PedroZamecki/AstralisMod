@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "astralis",
+  "version": "${version}",
+  "name": "Astralis",
+  "description": "A mod that adds a planetary system to Minecraft",
+  "authors": [
+    "Zamecki"
+  ],
+  "contact": {
+    "homepage": "https://github.com/zamecki/astralis",
+    "issues": "https://github.com/zamecki/astralis/issues"
+  },
+  "license": "MIT",
+  "icon": "assets/astralis/icon.png",
+  "environment": "server",
+  "entrypoints": {
+    "main": [
+      "org.zamecki.astralis.Astralis"
+    ]
+  },
+  "mixins": [
+    "astralis.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "minecraft": "${minecraft_version}",
+    "java": ">=21"
+  }
+}
+

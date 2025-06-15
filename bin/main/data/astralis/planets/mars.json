@@ -1,0 +1,6 @@
+{
+  "gravity": 0.38,
+  "distance": 225000000.0,
+  "noise_settings": "minecraft:mars",
+  "dimension_type": "astralis:mars"
+}
