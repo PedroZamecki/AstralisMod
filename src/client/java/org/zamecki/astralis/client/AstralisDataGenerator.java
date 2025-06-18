@@ -7,6 +7,7 @@ public class AstralisDataGenerator implements DataGeneratorEntrypoint {
 
     @Override
     public void onInitializeDataGenerator(FabricDataGenerator fabricDataGenerator) {
-        FabricDataGenerator.Pack pack = fabricDataGenerator.createPack();
+        @SuppressWarnings("unused")
+        FabricDataGenerator.Pack _pack = fabricDataGenerator.createPack();
     }
 }
