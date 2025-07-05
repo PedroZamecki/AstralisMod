@@ -17,19 +17,15 @@ public class PlanetDimensions {
     // Planet registry keys
     public static final String MOON_ID = "moon";
     public static final String MARS_ID = "mars";
-    public static final String SPACE_ID = "space";
 
     public static final RegistryKey<World> MOON = registerPlanet(MOON_ID);
     public static final RegistryKey<World> MARS = registerPlanet(MARS_ID);
-    public static final RegistryKey<World> SPACE = registerPlanet(SPACE_ID);
 
     // Registry keys for dimension types
     public static final RegistryKey<DimensionType> MOON_TYPE = RegistryKey.of(
             RegistryKeys.DIMENSION_TYPE, Identifier.of(Astralis.MOD_ID, MOON_ID));
     public static final RegistryKey<DimensionType> MARS_TYPE = RegistryKey.of(
             RegistryKeys.DIMENSION_TYPE, Identifier.of(Astralis.MOD_ID, MARS_ID));
-    public static final RegistryKey<DimensionType> SPACE_TYPE = RegistryKey.of(
-            RegistryKeys.DIMENSION_TYPE, Identifier.of(Astralis.MOD_ID, SPACE_ID));
 
     public static RegistryKey<World> registerPlanet(String id) {
         RegistryKey<World> planetKey = RegistryKey.of(

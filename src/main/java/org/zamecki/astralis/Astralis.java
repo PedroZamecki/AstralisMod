@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zamecki.astralis.command.PlanetCommand;
 import org.zamecki.astralis.dimension.PlanetDimensions;
+import org.zamecki.astralis.player.PlayerRespawnHandler;
 
 public class Astralis implements ModInitializer {
     public static final String MOD_ID = "astralis";
@@ -17,6 +18,9 @@ public class Astralis implements ModInitializer {
 
         // Initialize our planet dimensions
         PlanetDimensions.init();
+
+        // Initialize player respawn handler
+        PlayerRespawnHandler.init();
 
         // Register commands
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {

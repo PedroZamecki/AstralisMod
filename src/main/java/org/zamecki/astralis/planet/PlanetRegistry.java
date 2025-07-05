@@ -21,10 +21,6 @@ public class PlanetRegistry {
     private static final Map<Identifier, Planet> PLANETS = new HashMap<>();
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
-    public static final Identifier MARS_ID = Identifier.of(Astralis.MOD_ID, "mars");
-    public static final Identifier MOON_ID = Identifier.of(Astralis.MOD_ID, "moon");
-    public static final Identifier SPACE_ID = Identifier.of(Astralis.MOD_ID, "space");
-
     public static void init() {
         ResourceManagerHelper.get(ResourceType.SERVER_DATA).registerReloadListener(new SimpleSynchronousResourceReloadListener() {
             @Override
@@ -38,7 +34,7 @@ public class PlanetRegistry {
             }
         });
 
-        registerDefaultPlanets();
+        // No default planets - only load from data files
     }
 
     private static void loadPlanets(ResourceManager manager) {
@@ -60,40 +56,7 @@ public class PlanetRegistry {
             }
         });
 
-        if (PLANETS.isEmpty()) {
-            registerDefaultPlanets();
-        }
-    }
-
-    private static void registerDefaultPlanets() {
-        // Mars: 38% Earth gravity, Mars-like terrain
-        Planet mars = new Planet(
-                0.38F,
-                225000000F, // Distance from sun in km
-                Identifier.of("minecraft", "mars"),
-                Identifier.of(Astralis.MOD_ID, "mars")
-        );
-        PLANETS.put(MARS_ID, mars);
-
-        // Moon: 16% Earth gravity, Moon-like terrain
-        Planet moon = new Planet(
-                0.16F,
-                384400F, // Distance from Earth in km
-                Identifier.of("minecraft", "moon"),
-                Identifier.of(Astralis.MOD_ID, "moon")
-        );
-        PLANETS.put(MOON_ID, moon);
-
-        // Space: Zero gravity, empty void
-        Planet space = new Planet(
-                0.0F,
-                0F, // In space
-                Identifier.of("minecraft", "space"),
-                Identifier.of(Astralis.MOD_ID, "space")
-        );
-        PLANETS.put(SPACE_ID, space);
-
-        Astralis.LOGGER.info("Registered {} default planets", PLANETS.size());
+        Astralis.LOGGER.info("Loaded {} planets from data files", PLANETS.size());
     }
 
     /**

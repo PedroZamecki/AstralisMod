@@ -39,7 +39,7 @@ public record Planet(
     }
 
     /**
-     * Checks if this planet has zero gravity (like space)
+     * Checks if this planet has zero gravity
      */
     public boolean isZeroGravity() {
         return gravity <= 0.0F;

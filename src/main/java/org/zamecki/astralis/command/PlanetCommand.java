@@ -12,10 +12,10 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.World;
-import org.zamecki.astralis.Astralis;
 import org.zamecki.astralis.dimension.PlanetDimensions;
+import org.zamecki.astralis.player.PlayerPlanetData;
+import org.zamecki.astralis.player.PlayerRespawnHandler;
 
 import java.util.Set;
 
@@ -34,10 +34,28 @@ public class PlanetCommand {
                             builder.suggest(MOD_ID + ":" + planetId);
                         }
                         // Add overworld as an option for returning to Earth
-                        builder.suggest("minecraft:overworld");
+                        builder.suggest("minecraft:planet");
                         return builder.buildFuture();
                     })
                     .executes(PlanetCommand::teleportToPlanet)
+                )
+            )
+            .then(literal("return")
+                .executes(PlanetCommand::returnToDesignatedPlanet)
+            )
+            .then(literal("setspawn")
+                .executes(PlanetCommand::setCurrentSpawn)
+            )
+            .then(literal("designate")
+                .then(argument("planet", IdentifierArgumentType.identifier())
+                    .suggests((context, builder) -> {
+                        for (String planetId : PlanetDimensions.getPlanetDimensions().keySet()) {
+                            builder.suggest(MOD_ID + ":" + planetId);
+                        }
+                        builder.suggest("minecraft:planet");
+                        return builder.buildFuture();
+                    })
+                    .executes(PlanetCommand::designatePlanet)
                 )
             )
         );
@@ -46,65 +64,106 @@ public class PlanetCommand {
     private static int teleportToPlanet(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
         ServerCommandSource source = context.getSource();
         ServerPlayerEntity player = source.getPlayerOrThrow();
-
         Identifier planetId = IdentifierArgumentType.getIdentifier(context, "planet");
 
-        RegistryKey<World> worldKey;
+        return teleportToPlanetInternal(source, player, planetId, "Teleported to planet: " + planetId);
+    }
+
+    private static BlockPos findSafeSpawnLocation(ServerWorld world, Identifier planetId) {
+        if (planetId.equals(Identifier.of("minecraft", "planet"))) {
+            return world.getSpawnPos();
+        } else {
+            // Find safe location for planet dimensions
+            int x = 0, z = 0;
+            world.getChunk(x >> 4, z >> 4); // Load chunk
+            int y = world.getTopY(net.minecraft.world.Heightmap.Type.MOTION_BLOCKING, x, z) + 1;
+            if (y <= world.getBottomY()) {
+                y = world.getSeaLevel() + 10;
+            }
+            return new BlockPos(x, y, z);
+        }
+    }
+
+    private static int returnToDesignatedPlanet(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
+        ServerCommandSource source = context.getSource();
+        ServerPlayerEntity player = source.getPlayerOrThrow();
+
+        // Get player's designated planet
+        Identifier designatedPlanet = PlayerPlanetData.getDesignatedPlanet(player.getUuid());
         
-        // Handle special cases
-        if (planetId.equals(Identifier.of("minecraft", "overworld"))) {
+        // Simply teleport to the designated planet (reuses existing logic)
+        return teleportToPlanetInternal(source, player, designatedPlanet, "Returned to designated planet: " + designatedPlanet);
+    }
+
+    private static int teleportToPlanetInternal(ServerCommandSource source, ServerPlayerEntity player, Identifier planetId, String successMessage) throws CommandSyntaxException {
+        // Determine target world
+        RegistryKey<World> worldKey;
+        if (planetId.equals(Identifier.of("minecraft", "planet"))) {
             worldKey = World.OVERWORLD;
         } else if (planetId.getNamespace().equals(MOD_ID)) {
-            String planetName = planetId.getPath();
-            worldKey = PlanetDimensions.getPlanetDimensions().get(planetName);
-            
+            worldKey = PlanetDimensions.getPlanetDimensions().get(planetId.getPath());
             if (worldKey == null) {
-                source.sendError(Text.literal("Unknown planet: " + planetName));
+                source.sendError(Text.literal("Unknown planet: " + planetId.getPath()));
                 return 0;
             }
         } else {
-            source.sendError(Text.literal("Invalid planet. Must be in namespace '" + MOD_ID + "' or 'minecraft:overworld'"));
+            source.sendError(Text.literal("Invalid planet: " + planetId));
             return 0;
         }
 
         ServerWorld targetWorld = source.getServer().getWorld(worldKey);
         if (targetWorld == null) {
-            source.sendError(Text.literal("Planet " + planetId.getPath() + " is not loaded or does not exist"));
+            source.sendError(Text.literal("Planet world not loaded: " + planetId));
             return 0;
         }
 
-        // Default spawn coordinates
-        int x = 0;
-        int z = 0;
-        int y = 100;
-
-        // Ensure the chunk is loaded using the proper Minecraft 1.21.5 approach
-        ChunkPos chunkPos = new ChunkPos(x >> 4, z >> 4);
+        // Get spawn point or use default
+        PlayerPlanetData.SpawnPoint spawnPoint = PlayerPlanetData.getPlayerData(player.getUuid()).getSpawnPoint(planetId);
+        BlockPos teleportPos;
+        float yaw = 0.0f, pitch = 0.0f;
         
-        // Force chunk loading synchronously
-        targetWorld.getChunk(chunkPos.x, chunkPos.z);
-        
-        // Find a safe height to teleport to
-        y = targetWorld.getTopY(net.minecraft.world.Heightmap.Type.MOTION_BLOCKING, x, z) + 1;
-        if (y <= targetWorld.getBottomY()) {
-            y = targetWorld.getSeaLevel() + 10; // Fallback to sea level + 10
+        if (spawnPoint != null) {
+            teleportPos = spawnPoint.getPosition();
+            yaw = spawnPoint.getYaw();
+            pitch = spawnPoint.getPitch();
+        } else {
+            teleportPos = findSafeSpawnLocation(targetWorld, planetId);
         }
-
-        // Ensure the position is safe
-        BlockPos teleportPos = new BlockPos(x, y, z);
         
-        // Teleport the player
-        player.teleport(targetWorld,
-                teleportPos.getX() + 0.5, 
-                teleportPos.getY(), 
-                teleportPos.getZ() + 0.5,
-                Set.of(PositionFlag.X, PositionFlag.Y, PositionFlag.Z),
-                player.getYaw(),
-                player.getPitch(),
-                true);
+        // Teleport player
+        player.teleport(targetWorld, teleportPos.getX() + 0.5, teleportPos.getY(), teleportPos.getZ() + 0.5,
+            Set.of(PositionFlag.X, PositionFlag.Y, PositionFlag.Z), yaw, pitch, true);
 
-        source.sendFeedback(() -> Text.literal("Teleported to planet: " + planetId.toString()), true);
-        Astralis.LOGGER.info("Player {} teleported to planet: {}", player.getName().getString(), planetId.toString());
+        source.sendFeedback(() -> Text.literal(successMessage), true);
+        return 1;
+    }
+
+    private static int setCurrentSpawn(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
+        ServerCommandSource source = context.getSource();
+        ServerPlayerEntity player = source.getPlayerOrThrow();
+
+        // Use the respawn handler to set current location as spawn
+        PlayerRespawnHandler.setCurrentLocationAsSpawn(player);
+        
+        // Get current dimension for feedback
+        Identifier currentWorld = player.getWorld().getRegistryKey().getValue();
+        Identifier planet = currentWorld.equals(Identifier.of("minecraft", "overworld")) ? 
+            Identifier.of("minecraft", "planet") : currentWorld;
+        
+        source.sendFeedback(() -> Text.literal("§aSpawn point set for planet: " + planet + " at " + player.getBlockPos().toShortString()), true);
+        return 1;
+    }
+
+    private static int designatePlanet(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
+        ServerCommandSource source = context.getSource();
+        ServerPlayerEntity player = source.getPlayerOrThrow();
+
+        Identifier planetId = IdentifierArgumentType.getIdentifier(context, "planet");
+        
+        // Set as designated planet
+        PlayerPlanetData.setDesignatedPlanet(player.getUuid(), planetId);
+        
+        source.sendFeedback(() -> Text.literal("§aDesignated planet set to: " + planetId), true);
         return 1;
     }
 }
