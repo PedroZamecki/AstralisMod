@@ -4,7 +4,7 @@
   "package": "org.zamecki.astralis.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "EntityMixin"
+    "LivingEntityMixin"
   ],
   "injectors": {
     "defaultRequire": 1
