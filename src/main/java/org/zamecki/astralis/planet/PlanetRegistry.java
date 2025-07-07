@@ -35,6 +35,7 @@ public class PlanetRegistry {
         });
 
         // No default planets - only load from data files
+        // Note: minecraft:planet is virtual and contains vanilla dimensions (overworld, nether, end)
     }
 
     private static void loadPlanets(ResourceManager manager) {
@@ -68,6 +69,7 @@ public class PlanetRegistry {
 
     /**
      * Gets a planet by world registry key
+     * Note: This is for custom planets only - minecraft:planet is handled differently
      */
     public static Planet getPlanetByWorld(RegistryKey<World> worldKey) {
         Identifier worldId = worldKey.getValue();
@@ -82,14 +84,16 @@ public class PlanetRegistry {
     }
 
     /**
-     * Checks if a world is a planet
+     * Checks if a world is a custom planet
+     * Note: This doesn't include minecraft:planet which encompasses vanilla dimensions
      */
     public static boolean isPlanet(RegistryKey<World> worldKey) {
         return getPlanetByWorld(worldKey) != null;
     }
 
     /**
-     * Gets gravity factor for a world, defaults to 1.0 (Earth gravity) if not a planet
+     * Gets gravity factor for a world, defaults to 1.0 (Earth gravity) if not a custom planet
+     * Note: minecraft:planet (vanilla dimensions) always uses 1.0 gravity
      */
     public static float getGravityFactor(RegistryKey<World> worldKey) {
         Planet planet = getPlanetByWorld(worldKey);

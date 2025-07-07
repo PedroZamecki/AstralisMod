@@ -14,7 +14,6 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import org.zamecki.astralis.player.PlayerPlanetData;
-import org.zamecki.astralis.player.PlayerRespawnHandler;
 import org.zamecki.astralis.planet.PlanetRegistry;
 
 import java.util.Set;
@@ -22,6 +21,10 @@ import java.util.Set;
 import static net.minecraft.server.command.CommandManager.argument;
 import static net.minecraft.server.command.CommandManager.literal;
 
+/**
+ * Command handler for planet teleportation
+ * Only provides teleportation functionality - respawn logic is handled elsewhere
+ */
 public class PlanetCommand {
     public static void register(CommandDispatcher<ServerCommandSource> dispatcher) {
         dispatcher.register(literal("planet")
@@ -29,27 +32,13 @@ public class PlanetCommand {
             .then(literal("teleport")
                 .then(argument("planet", IdentifierArgumentType.identifier())
                     .suggests((context, builder) -> {
-                        PlanetRegistry.getAllPlanets().keySet().forEach(id -> builder.suggest(id.toString()));
+                        // Add minecraft:planet (default) as an option
                         builder.suggest("minecraft:planet");
+                        // Add all custom planets
+                        PlanetRegistry.getAllPlanets().keySet().forEach(id -> builder.suggest(id.toString()));
                         return builder.buildFuture();
                     })
                     .executes(PlanetCommand::teleportToPlanet)
-                )
-            )
-            .then(literal("return")
-                .executes(PlanetCommand::returnToDesignatedPlanet)
-            )
-            .then(literal("setspawn")
-                .executes(PlanetCommand::setCurrentSpawn)
-            )
-            .then(literal("designate")
-                .then(argument("planet", IdentifierArgumentType.identifier())
-                    .suggests((context, builder) -> {
-                        PlanetRegistry.getAllPlanets().keySet().forEach(id -> builder.suggest(id.toString()));
-                        builder.suggest("minecraft:planet");
-                        return builder.buildFuture();
-                    })
-                    .executes(PlanetCommand::designatePlanet)
                 )
             )
         );
@@ -60,100 +49,65 @@ public class PlanetCommand {
         ServerPlayerEntity player = source.getPlayerOrThrow();
         Identifier planetId = IdentifierArgumentType.getIdentifier(context, "planet");
 
-        return teleportToPlanetInternal(source, player, planetId, "Teleported to planet: " + planetId);
-    }
-
-    private static BlockPos findSafeSpawnLocation(ServerWorld world, Identifier planetId) {
-        if (planetId.equals(Identifier.of("minecraft", "planet"))) {
-            return world.getSpawnPos();
-        } else {
-            // Find safe location for planet dimensions
-            int x = 0, z = 0;
-            world.getChunk(x >> 4, z >> 4); // Load chunk
-            int y = world.getTopY(net.minecraft.world.Heightmap.Type.MOTION_BLOCKING, x, z) + 1;
-            if (y <= world.getBottomY()) {
-                y = world.getSeaLevel() + 10;
-            }
-            return new BlockPos(x, y, z);
-        }
-    }
-
-    private static int returnToDesignatedPlanet(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
-        ServerCommandSource source = context.getSource();
-        ServerPlayerEntity player = source.getPlayerOrThrow();
-
-        Identifier designatedPlanet = PlayerPlanetData.getDesignatedPlanet(player.getUuid());
-        if (designatedPlanet == null) {
-            source.sendError(Text.literal("No designated planet set."));
+        // Validate that the planet exists
+        if (!planetId.equals(Identifier.of("minecraft", "planet")) && 
+            !PlanetRegistry.getAllPlanets().containsKey(planetId)) {
+            source.sendError(Text.literal("Planet not found: " + planetId));
             return 0;
         }
-        return teleportToPlanetInternal(source, player, designatedPlanet, "Returned to designated planet: " + designatedPlanet);
-    }
 
-private static int teleportToPlanetInternal(ServerCommandSource source, ServerPlayerEntity player, Identifier planetId, String successMessage) {
-    // Determine target world
-    RegistryKey<World> worldKey;
-    if (planetId.equals(Identifier.of("minecraft", "planet"))) {
-        worldKey = World.OVERWORLD;
-    } else if (PlanetRegistry.getAllPlanets().containsKey(planetId)) {
-        worldKey = RegistryKey.of(net.minecraft.registry.RegistryKeys.WORLD, planetId);
-    } else {
-        source.sendError(Text.literal("Unknown planet: " + planetId));
-        return 0;
-    }
+        // Determine target world
+        RegistryKey<World> worldKey;
+        if (planetId.equals(Identifier.of("minecraft", "planet"))) {
+            // For minecraft:planet, teleport to overworld (main dimension)
+            worldKey = World.OVERWORLD;
+        } else {
+            // For custom planets, teleport to their main dimension
+            worldKey = RegistryKey.of(net.minecraft.registry.RegistryKeys.WORLD, planetId);
+        }
 
-    ServerWorld targetWorld = source.getServer().getWorld(worldKey);
-    if (targetWorld == null) {
-        source.sendError(Text.literal("Planet world not loaded: " + planetId));
-        return 0;
-    }
+        ServerWorld targetWorld = source.getServer().getWorld(worldKey);
+        if (targetWorld == null) {
+            source.sendError(Text.literal("World not found for planet: " + planetId));
+            return 0;
+        }
 
-    // Get spawn point or use default
-    PlayerPlanetData.SpawnPoint spawnPoint = PlayerPlanetData.getPlayerData(player.getUuid()).getSpawnPoint(planetId);
-    BlockPos teleportPos;
-    float yaw = 0.0f, pitch = 0.0f;
+        // Check if player has a spawn point for this planet
+        PlayerPlanetData.SpawnPoint spawnPoint = PlayerPlanetData.getPlayerData(player).getSpawnPoint(planetId);
+        BlockPos targetPos;
+        float yaw = 0.0f;
+        float pitch = 0.0f;
 
-    if (spawnPoint != null) {
-        teleportPos = spawnPoint.getPosition();
-        yaw = spawnPoint.getYaw();
-        pitch = spawnPoint.getPitch();
-    } else {
-        teleportPos = findSafeSpawnLocation(targetWorld, planetId);
-    }
+        if (spawnPoint != null) {
+            // Use existing spawn point, but validate it first
+            BlockPos savedPos = spawnPoint.getPosition();
+            BlockPos validatedPos = player.getWorldSpawnPos(targetWorld, savedPos);
+            
+            if (validatedPos.equals(savedPos)) {
+                // Spawn point is safe
+                targetPos = savedPos;
+                yaw = spawnPoint.getYaw();
+                pitch = spawnPoint.getPitch();
+            } else {
+                // Spawn point is not safe, use validated position and update
+                targetPos = validatedPos;
+                PlayerPlanetData.setSpawnPoint(player.getUuid(), planetId, validatedPos, 0.0f, 0.0f);
+                source.sendFeedback(() -> Text.literal("Your spawn point was unsafe and has been corrected"), false);
+            }
+        } else {
+            // Use the planet's world spawn point with vanilla validation
+            BlockPos worldSpawn = targetWorld.getSpawnPos();
+            targetPos = player.getWorldSpawnPos(targetWorld, worldSpawn);
+            PlayerPlanetData.setSpawnPoint(player.getUuid(), planetId, targetPos, yaw, pitch);
+        }
 
-    // Teleport player
-    player.teleport(targetWorld, teleportPos.getX() + 0.5, teleportPos.getY(), teleportPos.getZ() + 0.5,
-        Set.of(PositionFlag.X, PositionFlag.Y, PositionFlag.Z), yaw, pitch, true);
+        // Teleport player
+        player.teleport(targetWorld, 
+                targetPos.getX() + 0.5, targetPos.getY(), targetPos.getZ() + 0.5, 
+                Set.of(PositionFlag.X, PositionFlag.Y, PositionFlag.Z), 
+                yaw, pitch, true);
 
-    source.sendFeedback(() -> Text.literal(successMessage), true);
-    return 1;
-}
-    private static int setCurrentSpawn(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
-        ServerCommandSource source = context.getSource();
-        ServerPlayerEntity player = source.getPlayerOrThrow();
-
-        // Use the respawn handler to set current location as spawn
-        PlayerRespawnHandler.setCurrentLocationAsSpawn(player);
-        
-        // Get current dimension for feedback
-        Identifier currentWorld = player.getWorld().getRegistryKey().getValue();
-        Identifier planet = currentWorld.equals(Identifier.of("minecraft", "overworld")) ? 
-            Identifier.of("minecraft", "planet") : currentWorld;
-        
-        source.sendFeedback(() -> Text.literal("§aSpawn point set for planet: " + planet + " at " + player.getBlockPos().toShortString()), true);
-        return 1;
-    }
-
-    private static int designatePlanet(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
-        ServerCommandSource source = context.getSource();
-        ServerPlayerEntity player = source.getPlayerOrThrow();
-
-        Identifier planetId = IdentifierArgumentType.getIdentifier(context, "planet");
-        
-        // Set as designated planet
-        PlayerPlanetData.setDesignatedPlanet(player.getUuid(), planetId);
-        
-        source.sendFeedback(() -> Text.literal("§aDesignated planet set to: " + planetId), true);
+        source.sendFeedback(() -> Text.literal("Teleported to planet: " + planetId), true);
         return 1;
     }
 }

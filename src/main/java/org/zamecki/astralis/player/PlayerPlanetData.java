@@ -12,25 +12,17 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Manages player data including designated planets and spawn points per planet
+ * Manages player spawn points per planet
+ * Each player can have multiple spawn points, one for each planet they visit
  */
 public class PlayerPlanetData {
     private static final Map<UUID, PlayerData> PLAYER_DATA = new HashMap<>();
     
     public static class PlayerData {
-        private Identifier designatedPlanet;
         private final Map<Identifier, SpawnPoint> planetSpawns = new HashMap<>();
         
-        public PlayerData(Identifier designatedPlanet) {
-            this.designatedPlanet = designatedPlanet;
-        }
-        
-        public Identifier getDesignatedPlanet() {
-            return designatedPlanet;
-        }
-        
-        public void setDesignatedPlanet(Identifier planet) {
-            this.designatedPlanet = planet;
+        public PlayerData() {
+            // No designated planet concept - just store spawn points per planet
         }
         
         public void setSpawnPoint(Identifier planet, BlockPos pos, float yaw, float pitch) {
@@ -78,10 +70,7 @@ public class PlayerPlanetData {
      * Gets or creates player data
      */
     public static PlayerData getPlayerData(UUID playerId) {
-        return PLAYER_DATA.computeIfAbsent(playerId, id -> {
-            // Default designated planet is minecraft:planet
-            return new PlayerData(Identifier.of("minecraft", "planet"));
-        });
+        return PLAYER_DATA.computeIfAbsent(playerId, id -> new PlayerData());
     }
     
     /**
@@ -89,15 +78,6 @@ public class PlayerPlanetData {
      */
     public static PlayerData getPlayerData(ServerPlayerEntity player) {
         return getPlayerData(player.getUuid());
-    }
-    
-    /**
-     * Sets a player's designated planet
-     */
-    public static void setDesignatedPlanet(UUID playerId, Identifier planet) {
-        PlayerData data = getPlayerData(playerId);
-        data.setDesignatedPlanet(planet);
-        Astralis.LOGGER.info("Player {} designated planet set to {}", playerId, planet);
     }
     
     /**
@@ -110,21 +90,6 @@ public class PlayerPlanetData {
     }
     
     /**
-     * Gets a player's spawn point for their designated planet
-     */
-    public static SpawnPoint getDesignatedSpawnPoint(UUID playerId) {
-        PlayerData data = getPlayerData(playerId);
-        return data.getSpawnPoint(data.getDesignatedPlanet());
-    }
-    
-    /**
-     * Gets a player's designated planet
-     */
-    public static Identifier getDesignatedPlanet(UUID playerId) {
-        return getPlayerData(playerId).getDesignatedPlanet();
-    }
-    
-    /**
      * Saves player data to NBT
      */
     public static NbtCompound savePlayerData(UUID playerId) {
@@ -132,7 +97,7 @@ public class PlayerPlanetData {
         if (data == null) return new NbtCompound();
         
         NbtCompound nbt = new NbtCompound();
-        nbt.putString("designated_planet", data.getDesignatedPlanet().toString());
+        // Only save spawn points per planet - no designated planet concept
         
         NbtCompound spawnsNbt = new NbtCompound();
         for (Map.Entry<Identifier, SpawnPoint> entry : data.getAllSpawnPoints().entrySet()) {
@@ -156,11 +121,7 @@ public class PlayerPlanetData {
     public static void loadPlayerData(UUID playerId, NbtCompound nbt) {
         if (nbt.isEmpty()) return;
         
-        String designatedPlanetStr = nbt.getString("designated_planet").orElse("minecraft:planet");
-        Identifier designatedPlanet = Identifier.tryParse(designatedPlanetStr);
-        if (designatedPlanet == null) designatedPlanet = Identifier.of("minecraft", "planet");
-        
-        PlayerData data = new PlayerData(designatedPlanet);
+        PlayerData data = new PlayerData();
         
         if (nbt.contains("spawns")) {
             nbt.getCompound("spawns").ifPresent(spawnsNbt -> {

@@ -10,6 +10,10 @@ import net.minecraft.world.dimension.DimensionType;
 
 /**
  * Represents a planet with its properties and dimension configuration
+ * 
+ * Planets are conceptual groups that can contain multiple dimensions:
+ * - minecraft:planet encompasses vanilla dimensions (overworld, nether, end)
+ * - Custom planets typically have their own main dimension
  */
 public record Planet(
         float gravity,
