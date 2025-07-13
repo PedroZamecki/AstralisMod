@@ -13,10 +13,13 @@
   },
   "license": "MIT",
   "icon": "assets/astralis/icon.png",
-  "environment": "server",
+  "environment": "*",
   "entrypoints": {
     "main": [
       "org.zamecki.astralis.Astralis"
+    ],
+    "fabric-datagen": [
+      "org.zamecki.astralis.client.AstralisDataGenerator"
     ]
   },
   "mixins": [
@@ -25,6 +28,11 @@
   "depends": {
     "fabricloader": ">=${loader_version}",
     "minecraft": "${minecraft_version}",
+    "bil": "*",
+    "polymer-core": "*",
+    "polymer-networking": "*",
+    "polymer-virtual-entity": "*",
+    "polymer-resource-pack": "*",
     "java": ">=21"
   }
 }
