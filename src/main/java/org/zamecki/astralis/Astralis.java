@@ -1,12 +1,8 @@
 package org.zamecki.astralis;
 
 import net.fabricmc.api.ModInitializer;
-import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.zamecki.astralis.command.PlanetCommand;
-import org.zamecki.astralis.planet.PlanetRegistry;
-import org.zamecki.astralis.player.PlayerRespawnHandler;
 
 public class Astralis implements ModInitializer {
     public static final String MOD_ID = "astralis";
@@ -16,14 +12,17 @@ public class Astralis implements ModInitializer {
     public void onInitialize() {
         LOGGER.info("Initializing Astralis mod - Planetary System");
 
+        // TODO: Fully implement this.
         // Initialize our planet registry
-        PlanetRegistry.init();
+        // PlanetRegistry.init();
 
+        // TODO: Fully implement this.
         // Initialize player respawn handler
-        PlayerRespawnHandler.init();
+        // PlayerRespawnHandler.init();
 
+        // TODO: Fully implement this.
         // Register commands
-        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> PlanetCommand.register(dispatcher));
+        // CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> PlanetCommand.register(dispatcher));
 
         LOGGER.info("Astralis mod initialized successfully!");
     }
