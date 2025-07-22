@@ -1,8 +1,10 @@
 package org.zamecki.astralis;
 
+import eu.pb4.polymer.resourcepack.api.PolymerResourcePackUtils;
 import net.fabricmc.api.ModInitializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zamecki.astralis.block.BlockRegistry;
 
 public class Astralis implements ModInitializer {
     public static final String MOD_ID = "astralis";
@@ -23,6 +25,12 @@ public class Astralis implements ModInitializer {
         // TODO: Fully implement this.
         // Register commands
         // CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> PlanetCommand.register(dispatcher));
+
+        // Register server assets
+        PolymerResourcePackUtils.addModAssets(MOD_ID);
+
+        // Register blocks
+        BlockRegistry.init();
 
         LOGGER.info("Astralis mod initialized successfully!");
     }

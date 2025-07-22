@@ -1,4 +1,4 @@
-package org.zamecki.astralis.client;
+package org.zamecki.astralis;
 
 import net.fabricmc.fabric.api.datagen.v1.DataGeneratorEntrypoint;
 import net.fabricmc.fabric.api.datagen.v1.FabricDataGenerator;

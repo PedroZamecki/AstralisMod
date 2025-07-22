@@ -17,6 +17,8 @@
   "entrypoints": {
     "main": [
       "org.zamecki.astralis.Astralis"
+    ], "fabric-datagen": [
+      "org.zamecki.astralis.AstralisDataGenerator"
     ]
   },
   "mixins": [
