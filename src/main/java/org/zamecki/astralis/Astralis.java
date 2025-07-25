@@ -5,6 +5,7 @@ import net.fabricmc.api.ModInitializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zamecki.astralis.block.BlockRegistry;
+import org.zamecki.astralis.item.ItemRegistry;
 
 public class Astralis implements ModInitializer {
     public static final String MOD_ID = "astralis";
@@ -31,6 +32,9 @@ public class Astralis implements ModInitializer {
 
         // Register blocks
         BlockRegistry.init();
+
+        // Register items
+        ItemRegistry.init();
 
         LOGGER.info("Astralis mod initialized successfully!");
     }
