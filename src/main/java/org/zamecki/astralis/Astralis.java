@@ -5,6 +5,7 @@ import net.fabricmc.api.ModInitializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zamecki.astralis.block.BlockRegistry;
+import org.zamecki.astralis.entity.EntityRegistry;
 import org.zamecki.astralis.item.ItemRegistry;
 
 public class Astralis implements ModInitializer {
@@ -35,6 +36,9 @@ public class Astralis implements ModInitializer {
 
         // Register items
         ItemRegistry.init();
+
+        // Register entities
+        EntityRegistry.init();
 
         LOGGER.info("Astralis mod initialized successfully!");
     }
